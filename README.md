@@ -1,2 +1,2 @@
 # QuickSight
-Contains all the development artefacts related to QuickSight
+All the development related to the QuickSight
