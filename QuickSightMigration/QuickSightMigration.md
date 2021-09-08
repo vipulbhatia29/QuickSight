@@ -1,15 +1,15 @@
 # __How to Migrate Quicksight Artefacts between two accounts/environments__
-Recently, I got a chance to work on a project that, for the first time, exposed me to the world of Amazon Web Services. I have worked with AWS in the past, but never at the scale at which I am involved now. As part of the project, we have to build a data lake, analytic warehouses, and data marts that support the customer's operational and FP&A analytical needs. We have real-time as well as batch data flowing into the lakes. The architecture involves NiFi, AirFlow, Kafka, Spark. We are currently using cloud formation and data pipeline for Orchestration, but eventually, we plan to migrate to AirFlow. Understanding the architecture and the "what" and the "why" of it can be a discussion for another blog post. This blog post would focus primarily on the "oohs and ouches" of AWS Quicksight Migration and how to overcome those.\
+Recently, I got a chance to work on a project that, for the first time, exposed me to the world of Amazon Web Services. I have worked with AWS in the past, but never at this scale. As part of the project, we have to build a data lake, analytic warehouses, and data marts that support the customer's operational and FP&A analytical needs. We have real-time as well as batch data flowing into the lakes. The architecture involves NiFi, AirFlow, Kafka, Spark. We are currently using cloud formation and data pipeline for Orchestration, but eventually, we plan to migrate to AirFlow. Understanding the architecture and the "what" and the "why" can be a discussion for another blog post. This blog post would focus primarily on the "oohs and ouches" of AWS Quicksight Migration and how to overcome those.\
 I would be honest; I had never heard of AWS QuickSight before starting on this project. When I first started playing around with it, I thought it would grow on me, but it hasn't. I guess the tool is new, so we should give it a year or so before even beginning to compare it with OAC, Tableau, and Power BI.\
-We started the development in the Non-Prod environment with pipelines, flowing the data into the data lake. Eventually, we had the structures ready in Athena to support some content-building in QuickSight. We developed some cool stuff with QuickSight and did multiple reviews. Finally, as we prepared for Migration, I found that there is no easy migration path for Quicskight from 1 account to another. In Legacy BI Tools and modern Viz tools, there is a way to export-import the artifacts to migrate between the environments. In QuickSight, AWS hasn't yet provided the flexibility of export-import. I was disappointed, so I started researching the material online. There is not much out there on QuickSight, but AWS's documentation is phenomenal, and the Boto3 came to the rescue.\
-With Boto3, QuickSight has exposed its APIs, which we can stitch together to create a migration workflow for all the artifacts. In our case, we wanted to migrate DataSet, Analyses, Dashboards. Analyses and Dashboards require a Template to assist with the Migration. Because there is not much out there for assistance, the following sections would cover the Migration workflow and describe how to use the .ipynb file I have posted on GitHub to assist you with the migration needs if you ever have to work with QuickSight.\
+We started the development in the Non-Prod environment with pipelines, flowing the data into the data lake. Eventually, we had the structures ready in Athena to support some content-building in QuickSight. We developed some cool stuff with QuickSight and did multiple reviews. Finally, as we prepared for Migration, I found no easy migration path for Quicskight from 1 account to another. Usually, the Legacy BI Tools and Modern Viz Tools that I have worked with always have a moderately easy migration path to help migrate the development artifacts from 1 BI environment to another. In QuickSight, AWS hasn't yet provided the ease of export-import. I was disappointed, so I started researching the material online. There is not much out there on QuickSight, but AWS's documentation is phenomenal, and the Boto3 came to the rescue.\
+With Boto3, QuickSight has exposed its APIs, which we can stitch together to create a migration workflow for all the artifacts. In our case, we wanted to migrate DataSet, Analyses, Dashboards. Analyses and Dashboards require a Template to assist with the Migration. Because there is not much out there for assistance, the following sections would cover the Migration workflow and describe how to use the .ipynb file I have posted on GitHub to assist you with the Migration needs if you ever have to work with QuickSight.\
 The code and the blog make assumptions: 
 * The Target Environment does not contain the same artifacts with a different ARN. Quicksight lets you create multiple objects with the same name but with different ARNs. 
-* DataSources can be set up independently in the environments. However, a mapping table should map the source environment's data source id and the target environment's data source id. For our purpose, I have created a JSON file that provides that mapping. We have three environments: SandBox (SB), Non-Prod (NP), and Prod. I will go over the structure of the file later in the blog. You can choose to use XML or a table or a text file and change the logic for reading the mapping 
+* DataSources can be set up independently in the environments. However, a mapping table should map the source environment's data source id and the target environment's data source id. For our purpose, I have created a JSON file that provides that mapping. We have three environments: SandBox (SB), Non-Prod (NP), and Prod. I will go over the structure of the file later in the blog. You can choose to use XML or a table, or a text file and change the logic for reading the mapping 
 * The code does not have a lot of exception handling; it should be implemented as per the individual requirement. * The blog assumes that the reader has a foundational knowledge of AWS: What is ARN, key-pair, and token.
 
 ## Process and Code Walkthrough
-Before we begin examining the steps, we need to ensure that the role that we use for migration, has the correct access to perform all the steps in the source account resources as well as the target account. I ran into these issues multiple times. I have listed down the list of Authorizations that we may need. This list may not be exhaustive but can be a good starting point
+Before we begin examining the steps, we need to ensure that the role we use for Migration has the correct access to perform all the steps in the source account resources and the target account. I ran into these issues multiple times. Therefore, I have listed down the list of Authorizations that we may need. This list may not be exhaustive but can be a good starting point.
  * quicksight:CreateAnalysis
  * quicksight:CreateDashboard
  * quicksight:CreateDataSet
@@ -36,11 +36,11 @@ Before we begin examining the steps, we need to ensure that the role that we use
  For an exhaustive list of Actions, please refer to https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazonquicksight.html
 
 Order of Execution:
-![Order of Execution](./QuickSightMigrationProcess.jpg)
+./QuickSightMigrationProcess.jpg
 
 ## __1. Initialize the variables and Instantiate the QuickSight Clients using boto3__
 * Use access_key_id, secret_access_key and token from the source and target environments to instantiate the QuickSight Clients
-![Variable1](./Variable1.jpg)
+./Variable1.jpg
 * Initialize the variables: Ensure that the correct values are set for the variables for each of these variables:\
 v_src_account_id=?\
 v_analysis_id=?\
@@ -50,7 +50,7 @@ v_src_env='np' #values in ['np','prod','sb']\
 v_target_env='sb' #values in ['np','prod','sb']\
 v_role=?\
 v_user=?
-![Variable2](./Variable2.jpg)
+./Variable2.jpg
 
 ## __2. Analysis__
 ### *__2.1 Get the details for the Analysis from the Source Environment__*
@@ -100,9 +100,9 @@ tgt_analysis_name=analysisName
 ```
 v_template_name=src_analysisId.replace(" ","")+"_MigrationTemplate"
 ```
-### *__3.2 Generate a list of all datasets associated to the Analysis__*
+### *__3.2 Generate a list of all datasets associated with the Analysis__*
 The DataSets are required in the creation of the Template. An Analysis may be created with multiple Datasets. At the time of Template creation, we have to provide each Dataset associated with the Analysis.\
-Each DataSet associated with the Analysis can be found in the Reponse provided by "describe_analysis" API call. Use the DataSet ARN provided in Response to query the API "list_data_sets further". In this step, we create three dictionaries to store the details of the DataSets associated with the Analysis. First, we create dictionaries with the key as the DataSet ARN.
+We can extract information about each of the DataSets associated with the Analysis in the Reponse provided by "describe_analysis" API call. Then, use the DataSet ARN provided in Response to query the API "list_data_sets further". In this step, we create three dictionaries to store the details of the DataSets associated with the Analysis. First, we create dictionaries with the key as the DataSet ARN.
 * *v_src_DatasetArn_Dict*: DataSet ARNs as Items
 * *v_src_DatasetArn_Id*: DataSet Ids as Items
 * *v_src_DatasetName*: DataSet Names as Items
@@ -116,10 +116,11 @@ src_analysis_desc=client.describe_analysis(
 ``` 
 ### *__3.3 Generate the List that is used to provide an input to SourceEntity.SourceAnalysis.DataSetReferences at the time of Template Creation.__*
 The template body requires that we provide a list of all datasets (ARNs) and their placeholder names. As an example, please refer to the snippet below:\
-*[{'DataSetPlaceholder': '4a5629cc-8898-4e50-b335-aeee70bad853_MigrationTemplateARN1', 'DataSetArn': 'arn:aws:quicksight:us-east-1:462393762422:dataset/h3359652-937a-4656-zbd7-2b17f163205d'},
-{'DataSetPlaceholder': '3z5lmnop-6789-3547-a543-rtytg456753_MigrationTemplateARN2', 'DataSetArn': 'arn:aws:quicksight:us-east-1:462393762422:dataset/i3359652-937a-4656-axy7-2b17f1623450h'}]*
-
 ```
+[{'DataSetPlaceholder': '4xxxxxx-0000-4xxx-bxxx-axxxxxxxxxxx_MigrationTemplateARN1', 'DataSetArn': 'arn:aws:quicksight:us-east-1:000000000000:dataset/hxxxxxxx-9xxx-4xxx-zxxx-2xxxxxxxxx'},
+{'DataSetPlaceholder': '3xxxxxx-6000-3000-axxx-rxxxxxxxxxxx_MigrationTemplateARN2', 'DataSetArn': 'arn:aws:quicksight:us-east-1:000000000000:dataset/ixxxxxxx-9Xxx-4xxx-axxx-2xxxx'}]
+
+
 src_dataset_ARN_list=[]
 n=0
 for item in v_src_DatasetArn_Dict:
